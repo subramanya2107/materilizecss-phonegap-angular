@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-var app = {
+var appInit = {
     // Application Constructor
     initialize: function() {
         this.bindEvents();
@@ -26,27 +26,23 @@ var app = {
     // Bind any events that are required on startup. Common events are:
     // 'load', 'deviceready', 'offline', and 'online'.
     bindEvents: function() {
-        document.addEventListener('deviceready', this.onDeviceReady, false);
+        if (typeof window.cordova === 'object')
+            document.addEventListener('deviceready', this.onDeviceReady, false);
+        else
+            appInit.receivedEvent();
     },
     // deviceready Event Handler
     //
     // The scope of 'this' is the event. In order to call the 'receivedEvent'
     // function, we must explicitly call 'app.receivedEvent(...);'
     onDeviceReady: function() {
-        app.receivedEvent('deviceready');
+        appInit.receivedEvent();
     },
     // Update DOM on a Received Event
-    receivedEvent: function(id) {
-        var parentElement = document.getElementById(id);
-        var listeningElement = parentElement.querySelector('.listening');
-        var receivedElement = parentElement.querySelector('.received');
-
-        listeningElement.setAttribute('style', 'display:none;');
-        receivedElement.setAttribute('style', 'display:block;');
-
-        console.log('Received Event: ' + id);
+    receivedEvent: function() {
+       angular.bootstrap(document, ['myApp']);
     }
 };
 $(document).ready(function(){
-    app.initialize();
+    appInit.initialize();
 });

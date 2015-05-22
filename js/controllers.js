@@ -1,7 +1,6 @@
 'use strict';
 
-angular.module('myApp.controllers', [])
-    .controller('MainCtrl', ['$scope', '$rootScope', '$window', '$location', function ($scope, $rootScope, $window, $location) {
+app.controller('MainCtrl', ['$scope', '$rootScope', '$window', '$location', function ($scope, $rootScope, $window, $location) {
         $scope.slide = '';
         $rootScope.back = function() {
           $scope.slide = 'slide-right';
@@ -12,16 +11,16 @@ angular.module('myApp.controllers', [])
           $location.url(path);
         }
     }])
-    .controller('HomeCtrl', ['$scope', 'barcodescan', function ($scope, barcodescan) {
-        $('.modal-trigger').leanModal();
-        $scope.scan=function(){
-           
-            barcodescan(function(result){
-                 alert("We got a barcode\n" +
-                    "Result: " + result.text + "\n" +
-                    "Format: " + result.format + "\n" +
-                    "Cancelled: " + result.cancelled);
-            });
-        }
-         
+    .controller('HomeCtrl', ['$scope', 'CordovaFactory', function ($scope, CordovaFactory) {
+            $scope.scan=function(){
+                CordovaFactory.scanBarCode().then(function(result){
+                        alert("We got a barcode\n" +
+                        "Result: " + result.text + "\n" +
+                        "Format: " + result.format + "\n" +
+                        "Cancelled: " + result.cancelled);
+                }, function(error){
+                    alert(error);
+                });
+            }
+                   
     }]);
