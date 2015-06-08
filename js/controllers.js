@@ -270,7 +270,7 @@ app.controller('MainCtrl', ['$scope', '$rootScope', '$window', '$location','$htt
                 });
                 
             }
-        }]).controller('QrcodeCtrl', ['$localstorage','$rootScope','$scope', function ($localstorage,$rootScope,$scope) {
+        }]).controller('QrcodeCtrl', ['$localstorage','$rootScope','$scope','$http', function ($localstorage,$rootScope,$scope,$http) {
             $scope.orderAmount=$localstorage.get("orderAmount");
             var qrcode = new QRCode("qrcodeHolder", {
                 text: $localstorage.get("orderId"),
