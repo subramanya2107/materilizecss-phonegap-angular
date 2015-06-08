@@ -1,6 +1,6 @@
 'use strict';
 
-app.controller('MainCtrl', ['$scope', '$rootScope', '$window', '$location', function ($scope, $rootScope, $window, $location) {
+app.controller('MainCtrl', ['$scope', '$rootScope', '$window', '$location','$http','$localstorage', function ($scope, $rootScope, $window, $location,$http,$localstorage) {
         $scope.slide = '';
         $scope.showLoader=false;
         $scope.loadingMsg="loading";
@@ -26,47 +26,52 @@ app.controller('MainCtrl', ['$scope', '$rootScope', '$window', '$location', func
         document.addEventListener("backbutton", function(){
             navigator.app.exitApp();
         }, false);
-    
+         $rootScope.reloadUserData=function(){
+                var userId=$localstorage.get("userId");
+             //   userId="557433f16360db6742a1e450";
+                $scope.user={};
+                $rootScope.showLoader("fetching user details");
+                $http.get("https://payall-subbu2107.rhcloud.com/getUser/"+userId).success(function (res) {
+                    $rootScope.hideLoader();
+                    if(res.success){
+                        $scope.user.name=res.result.poi.name;
+                        $scope.user.photo=res.result.photo.replace(/\r\n/g,"");
+                        $scope.user.balance=res.result.balance;
+                    }else{
+                        alert("failed to get data");
+                    }
+                }).error(function(err) {
+                    alert(err);
+                });
+         
+         }
        
     }])
-    .controller('HomeCtrl', ['$scope', 'CordovaFactory','$localstorage','$http', function ($scope, CordovaFactory,$localstorage,$http) {
-                    var userId=$localstorage.get("userId");
-                    $scope.user={};
-                    var userDetails=$localstorage.getObject("userDetails");
-                    $scope.user.name=userDetails.poi.name;
-                    //$scope.user.photo=userDetails.photo.replace(/\r\n/g,"");
-                    $scope.user.balance="loading..";
-                    $rootScope.showLoader("fetching user details");
-                    $http.get("https://payall-subbu2107.rhcloud.com/getUser/"+userId).success(function (res) {
-                            $rootScope.hideLoader();
-	                    if(res.success){
-                           
-                            $scope.user.balance=res.result.balance;
-                        }else{
-                            alert("failed to get data");
-                        }
-	                }).error(function(err) {
-	                    alert(err);
-	                });
-           
+    .controller('HomeCtrl', ['$scope', 'CordovaFactory','$localstorage','$http', '$rootScope',function ($scope, CordovaFactory,$localstorage,$http,$rootScope) {
+                    
+                   
+            $rootScope.reloadUserData();
+                
             $scope.scan=function(){
                 CordovaFactory.scanBarCode().then(function(result){
                     if(!result.cancelled)
                        $scope.pay( result.text);
+                    else
+                        alert("scanning failed");
                 }, function(error){
                     alert(error);
                 });
             }
             $scope.pay=function(orderId){
                 var orderData={};
-                orderData.orderId=$localstorage.get("userId");
+                orderData.orderId=orderId;
                 orderData.customerId=$localstorage.get("userId");
                 $rootScope.showLoader('payment in progress');
                 $http.post("https://payall-subbu2107.rhcloud.com/payorder", orderData).success(function(res) {
                     $rootScope.hideLoader();
                     if(res.success){
                         alert("payment successful");
-                        $rootScope.go("/home");
+                        $rootScope.reloadUserData();
                     }else{
                         alert("payment failed");
                     }
@@ -80,27 +85,32 @@ app.controller('MainCtrl', ['$scope', '$rootScope', '$window', '$location', func
 				$('#receivemodal').openModal();
             }   
             $scope.createOrder=function(){
-                var orderData={};
-                orderData.amount=$scope.amount;
-                orderData.receiverId=$localstorage.get("userId");
-                $rootScope.showLoader('creating order');
-                $http.post("https://payall-subbu2107.rhcloud.com/addorder", orderData).success(function(res) {
-                    $rootScope.hideLoader();
-                    if(res.success){
-                        $localstorage.set("orderId",res.result._id);
-                        $rootScope.go("/qrcode");
-                    }else{
-                        alert("failed to get details");
-                    }
-                }).error(function(err) {
-                    alert(err);
-                });
+                if($scope.amount !="" && $scope.amount>0){
+                    var orderData={};
+                    orderData.amount=$scope.amount;
+                    $localstorage.set("orderAmount", orderData.amount);
+                    orderData.receiverId=$localstorage.get("userId");
+                   // orderData.receiverId="557433f16360db6742a1e450";
+                    $rootScope.showLoader('creating order');
+                    $http.post("https://payall-subbu2107.rhcloud.com/addorder", orderData).success(function(res) {
+                        $rootScope.hideLoader();
+                        if(res.success){
+                            $localstorage.set("orderId",res.result._id);
+                            $rootScope.go("/qrcode");
+                        }else{
+                            alert("failed to get details");
+                        }
+                    }).error(function(err) {
+                        alert(err);
+                    });
+                }
             }
             
     }]).controller('SignUpCtrl', ['$scope', 'CordovaFactory','$http', '$localstorage','$rootScope',function ($scope, CordovaFactory,$http, $localstorage,$rootScope) {
     
-    if($localstorage.get("isAuthenticated")){
-     $rootScope.go("/home");
+   if($localstorage.get("userId") != undefined){
+    // if(true){
+        $rootScope.go("/home");
         return;
     }
     $scope.aadhaarNumber="";
@@ -116,7 +126,7 @@ app.controller('MainCtrl', ['$scope', '$rootScope', '$window', '$location', func
                         location.altitude=position.coords.altitude
                         $localstorage.setObject('gps',location);
                     
-                    $scope.startScan();
+                        $scope.startScan();
                 },function(error){
                     $rootScope.hideLoader();
                 alert("fetching location failed.Please make sure gps is turned on.")
@@ -124,7 +134,7 @@ app.controller('MainCtrl', ['$scope', '$rootScope', '$window', '$location', func
                 
           }
             $scope.submitAadhaarNumber=function(){
-               $scope.aadhaarNumber.toString();
+              $scope.aadhaarNumber= $scope.aadhaarNumber.toString();
              if($scope.aadhaarNumber.length==12){
                 $rootScope.showLoader('loading gps data');
                  CordovaFactory.getLocation().then(function(position){
@@ -135,8 +145,8 @@ app.controller('MainCtrl', ['$scope', '$rootScope', '$window', '$location', func
                         location.longitude=position.coords.longitude;
                         location.altitude=position.coords.altitude
                         $localstorage.setObject('gps',location);
-                   $localstorage.set('xmluid' ,  $scope.aadhaarNumber);
-                $scope.callForOtp();
+                        $localstorage.set('xmluid' ,  $scope.aadhaarNumber);
+                        $scope.callForOtp();
                 },function(error){
                     $rootScope.hideLoader();
                 alert("fetching location failed.Please make sure gps is turned on.")
@@ -248,9 +258,10 @@ app.controller('MainCtrl', ['$scope', '$rootScope', '$window', '$location', func
                 $http.post("https://payall-subbu2107.rhcloud.com/adduser", userData).success(function(res) {
                     $rootScope.hideLoader();
                     if(res.success){
-                        $localstorage.set("isAuthenticated",true);
-                        $localstorage.set("userId",res.result._id);
+                       
+                       $localstorage.set("userId",res.result._id);
                         $rootScope.go("/home");
+                       
                     }else{
                         alert("failed to get details");
                     }
@@ -259,8 +270,8 @@ app.controller('MainCtrl', ['$scope', '$rootScope', '$window', '$location', func
                 });
                 
             }
-        }]).controller('QrcodeCtrl', ['$localstorage','$rootScope', function ($localstorage,$rootScope) {
-       
+        }]).controller('QrcodeCtrl', ['$localstorage','$rootScope','$scope', function ($localstorage,$rootScope,$scope) {
+            $scope.orderAmount=$localstorage.get("orderAmount");
             var qrcode = new QRCode("qrcodeHolder", {
                 text: $localstorage.get("orderId"),
                 width: 128,
@@ -269,5 +280,19 @@ app.controller('MainCtrl', ['$scope', '$rootScope', '$window', '$location', func
                 colorLight : "#ffffff",
                 correctLevel : QRCode.CorrectLevel.H
             });
-       
-}]);
+            $scope.orderStatus="pending";
+            $scope.checkstatus=function(){
+                $rootScope.showLoader("fetching order staus");
+                $http.get("https://payall-subbu2107.rhcloud.com/getOrder/"+$localstorage.get("orderId")).success(function (res) {
+                    $rootScope.hideLoader();
+                    if(res.success){
+                        $scope.orderStatus=res.result.status;
+                       }else{
+                         $scope.orderStatus="failed to fetch status";
+                    }
+                }).error(function(err) {
+                    alert(err);
+                });
+            
+            }
+        }]);
